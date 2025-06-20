@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      - DB_HOST=database
+      - DB_USER=docker_user
+      - DB_PASSWORD=DockerDBPassword2024!
+      - REDIS_PASSWORD=DockerRedisPassword2024
+      - JWT_SECRET=DockerJWTSecret2024!@#
+      - API_KEY=docker_api_key_1234567890abcdef
+    depends_on:
+      - database
+      - redis
+
+  database:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=docker_app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=PostgresDockerPassword2024!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6
+    command: redis-server --requirepass RedisDockerPassword2024
+    environment:
+      - REDIS_PASSWORD=RedisDockerPassword2024
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    environment:
+      - SSL_CERT_PASSWORD=NginxSSLPassword2024
+      - AUTH_TOKEN=nginx_auth_token_xyz789
+
+volumes:
+  postgres_data:
+
+# Secrets for production
+# AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+# AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+# STRIPE_SECRET_KEY=sk_live_51234567890abcdefghijklmnop

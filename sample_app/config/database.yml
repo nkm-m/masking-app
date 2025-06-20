@@ -1,0 +1,22 @@
+development:
+  adapter: postgresql
+  database: myapp_dev
+  username: admin
+  password: "DevPassword123!"
+  host: localhost
+  port: 5432
+
+production:
+  adapter: postgresql
+  database: myapp_prod
+  username: prod_user
+  password: "SuperSecretProd2024"
+  host: db.example.com
+  port: 5432
+  ssl_key: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7..."
+  api_token: "prod-token-abc123def456"
+
+test:
+  adapter: sqlite3
+  database: ":memory:"
+  secret_key_base: "test_secret_key_base_12345"
