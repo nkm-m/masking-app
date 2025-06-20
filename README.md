@@ -23,7 +23,7 @@ A powerful Python tool that automatically detects and masks sensitive informatio
 1. Clone this repository:
 ```bash
 git clone https://github.com/nkm-m/masking-app.git
-cd secret-masking-tool
+cd masking-app
 ```
 
 2. No additional dependencies required - uses only Python standard library!
