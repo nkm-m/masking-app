@@ -7,11 +7,12 @@ def find_files(directory):
     
     # 除外するファイルのパターン
     exclude_patterns = [
-        'mask_secrets.py',  # 自分自身を除外
-        '*_masked.*',       # 既にマスキング済みのファイルを除外
-        '*.pyc',           # Pythonコンパイル済みファイルを除外
-        '__pycache__',     # Pythonキャッシュディレクトリを除外
-        'create_sample_app.py'  # サンプル生成スクリプトを除外
+        'mask_secrets.py',       # 自分自身を除外
+        '*.pyc',                # Pythonコンパイル済みファイルを除外
+        '__pycache__',          # Pythonキャッシュディレクトリを除外
+        'README.md',            # README.mdを除外（追加）
+        'LICENSE',              # LICENSEファイルも除外（オプション）
+        '.gitignore'            # .gitignoreも除外（オプション）
     ]
     
     for root, dirs, files in os.walk(directory):
