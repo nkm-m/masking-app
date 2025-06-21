@@ -6,41 +6,94 @@ def find_files(directory):
     found_files = []
     
     # 除外するファイルのパターン
-    exclude_patterns = [
+    exclude_file_patterns = [
         'mask_secrets.py',       # 自分自身を除外
+        '*_masked.*',            # 既にマスキング済みのファイルを除外
         '*.pyc',                # Pythonコンパイル済みファイルを除外
-        '__pycache__',          # Pythonキャッシュディレクトリを除外
-        'README.md',            # README.mdを除外（追加）
-        'LICENSE',              # LICENSEファイルも除外（オプション）
-        '.gitignore'            # .gitignoreも除外（オプション）
+        'create_sample_app.py',  # サンプル生成スクリプトを除外
+        'README.md',            # README.mdを除外
+        'LICENSE',              # LICENSEファイルを除外
+        '.gitignore'            # .gitignoreを除外
     ]
     
+    # 除外するディレクトリのパターン
+    exclude_dir_patterns = [
+        '__pycache__',          # Pythonキャッシュディレクトリ
+        '.git',                 # Gitディレクトリ
+        '.vscode',              # VS Codeディレクトリ
+        '.idea',                # IntelliJ IDEAディレクトリ
+        'node_modules',         # Node.jsモジュールディレクトリ
+        'venv',                 # Python仮想環境
+        'env',                  # Python仮想環境
+        '.env',                 # 環境設定ディレクトリ（ファイルではない場合）
+        'dist',                 # ビルド成果物ディレクトリ
+        'build',                # ビルドディレクトリ
+        'target',               # Javaビルドディレクトリ
+        'vendor',               # PHPベンダーディレクトリ
+        '.next',                # Next.jsビルドディレクトリ
+        '.nuxt',                # Nuxt.jsビルドディレクトリ
+        'coverage',             # テストカバレッジディレクトリ
+        '.pytest_cache',        # Pytestキャッシュ
+        '.mypy_cache',          # Mypyキャッシュ
+        'logs',                 # ログディレクトリ
+        'tmp',                  # 一時ディレクトリ
+        'temp'                  # 一時ディレクトリ
+    ]
+    
+    def should_exclude_directory(dir_name, dir_path):
+        """ディレクトリを除外するかどうかを判定"""
+        for pattern in exclude_dir_patterns:
+            if pattern.startswith('*') and pattern.endswith('*'):
+                # *pattern* のような場合
+                if pattern[1:-1] in dir_name:
+                    return True
+            elif pattern.startswith('*'):
+                # *pattern のような場合
+                if dir_name.endswith(pattern[1:]):
+                    return True
+            elif pattern.endswith('*'):
+                # pattern* のような場合
+                if dir_name.startswith(pattern[:-1]):
+                    return True
+            elif dir_name == pattern:
+                # 完全一致
+                return True
+        return False
+    
+    def should_exclude_file(file_name, file_path):
+        """ファイルを除外するかどうかを判定"""
+        for pattern in exclude_file_patterns:
+            if pattern.startswith('*') and pattern.endswith('*'):
+                # *_masked.* のようなパターン
+                if '_masked.' in file_name:
+                    return True
+            elif pattern.startswith('*.'):
+                # *.pyc のようなパターン
+                if file_name.endswith(pattern[1:]):
+                    return True
+            elif pattern.startswith('*'):
+                # *pattern のような場合
+                if file_name.endswith(pattern[1:]):
+                    return True
+            elif pattern.endswith('*'):
+                # pattern* のような場合
+                if file_name.startswith(pattern[:-1]):
+                    return True
+            elif file_name == pattern:
+                # 完全一致
+                return True
+        return False
+    
     for root, dirs, files in os.walk(directory):
-        # __pycache__ ディレクトリを除外
-        dirs[:] = [d for d in dirs if d != '__pycache__']
+        # 除外するディレクトリをフィルタリング
+        # dirs[:] を使って元のリストを変更することで、os.walkが除外ディレクトリに入らないようにする
+        dirs[:] = [d for d in dirs if not should_exclude_directory(d, os.path.join(root, d))]
         
         for file in files:
             file_path = os.path.join(root, file)
             
-            # 除外パターンをチェック
-            should_exclude = False
-            for pattern in exclude_patterns:
-                if pattern.startswith('*') and pattern.endswith('*'):
-                    # *_masked.* のようなパターン
-                    if '_masked.' in file:
-                        should_exclude = True
-                        break
-                elif pattern.startswith('*.'):
-                    # *.pyc のようなパターン
-                    if file.endswith(pattern[1:]):
-                        should_exclude = True
-                        break
-                elif file == pattern:
-                    # 完全一致
-                    should_exclude = True
-                    break
-            
-            if not should_exclude:
+            # ファイルの除外チェック
+            if not should_exclude_file(file, file_path):
                 found_files.append(file_path)
     
     return found_files
@@ -48,12 +101,10 @@ def find_files(directory):
 def read_file_content(file_path):
     """ファイルの内容を読み込む"""
     try:
-        # テキストファイルとして読み込み（UTF-8エンコーディング）
         with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read()
             return content
     except UnicodeDecodeError:
-        # UTF-8で読めない場合は、別のエンコーディングを試す
         try:
             with open(file_path, 'r', encoding='shift_jis') as file:
                 content = file.read()
@@ -69,7 +120,6 @@ def create_secret_patterns():
     """機密情報を検出するための正規表現パターンを作成"""
     patterns = []
     
-    # 1. 一般的なキー:値のパターン（様々な形式に対応）
     general_key_patterns = [
         # password系
         r'(password\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
