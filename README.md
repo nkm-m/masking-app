@@ -91,38 +91,6 @@ python mask_secrets.py
 - **Exclusion Patterns**: Skips already processed files and system files
 - **Error Handling**: Graceful handling of encoding issues and file access errors
 
-## 📊 Example Output
-
-```
-==================================================
-機密情報マスキングツール（上書き版）
-==================================================
-作業ディレクトリ: /path/to/your/project
-
-検出パターン数: 45
-処理対象ファイル数: 8
-
-📁 config/database.yml
-  ⚠️  機密情報が 3 件見つかりました:
-    1. 'password: "DevPassword123!"'
-    2. 'password: "SuperSecretProd2024"'
-    3. 'api_token: "prod-token-abc123def456"'
-  🔒 マスキングを実行しています...
-  💾 バックアップ作成: config/database.yml.backup
-  ✅ ファイル上書き完了
-
-==================================================
-処理結果
-==================================================
-処理対象ファイル数: 8
-機密情報が見つかったファイル数: 6
-検出された機密情報の総数: 24
-上書きされたファイル数: 6
-作成されたバックアップファイル数: 6
-
-✨ 処理が完了しました！
-```
-
 ## ⚠️ Important Notes
 
 - **Always backup your code** before running this tool on important projects
