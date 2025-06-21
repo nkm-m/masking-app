@@ -2,151 +2,120 @@ import os
 import re
 
 def find_files(directory):
-    """指定されたディレクトリ配下のすべてのファイルを検索する"""
+    """Find all files in the specified directory and subdirectories"""
     found_files = []
     
-    # 除外するファイルのパターン
     exclude_file_patterns = [
-        'mask_secrets.py',       # 自分自身を除外
-        '*_masked.*',            # 既にマスキング済みのファイルを除外
-        '*.pyc',                # Pythonコンパイル済みファイルを除外
-        'create_sample_app.py',  # サンプル生成スクリプトを除外
-        'README.md',            # README.mdを除外
-        'LICENSE',              # LICENSEファイルを除外
-        '.gitignore'            # .gitignoreを除外
+        'mask_secrets.py',
+        '*_masked.*',
+        '*.pyc',
+        'create_sample_app.py',
+        'README.md',
+        'LICENSE',
+        '.gitignore'
     ]
     
-    # 除外するディレクトリのパターン
     exclude_dir_patterns = [
-        '__pycache__',          # Pythonキャッシュディレクトリ
-        '.git',                 # Gitディレクトリ
-        '.vscode',              # VS Codeディレクトリ
-        '.idea',                # IntelliJ IDEAディレクトリ
-        'node_modules',         # Node.jsモジュールディレクトリ
-        'venv',                 # Python仮想環境
-        'env',                  # Python仮想環境
-        '.env',                 # 環境設定ディレクトリ（ファイルではない場合）
-        'dist',                 # ビルド成果物ディレクトリ
-        'build',                # ビルドディレクトリ
-        'target',               # Javaビルドディレクトリ
-        'vendor',               # PHPベンダーディレクトリ
-        '.next',                # Next.jsビルドディレクトリ
-        '.nuxt',                # Nuxt.jsビルドディレクトリ
-        'coverage',             # テストカバレッジディレクトリ
-        '.pytest_cache',        # Pytestキャッシュ
-        '.mypy_cache',          # Mypyキャッシュ
-        'logs',                 # ログディレクトリ
-        'tmp',                  # 一時ディレクトリ
-        'temp'                  # 一時ディレクトリ
+        '__pycache__',
+        '.git',
+        '.vscode',
+        '.idea',
+        'node_modules',
+        'venv',
+        'env',
+        'dist',
+        'build',
+        'target',
+        'vendor',
+        '.next',
+        '.nuxt',
+        'coverage',
+        '.pytest_cache',
+        '.mypy_cache',
+        'logs',
+        'tmp',
+        'temp'
     ]
     
     def should_exclude_directory(dir_name, dir_path):
-        """ディレクトリを除外するかどうかを判定"""
         for pattern in exclude_dir_patterns:
             if pattern.startswith('*') and pattern.endswith('*'):
-                # *pattern* のような場合
                 if pattern[1:-1] in dir_name:
                     return True
             elif pattern.startswith('*'):
-                # *pattern のような場合
                 if dir_name.endswith(pattern[1:]):
                     return True
             elif pattern.endswith('*'):
-                # pattern* のような場合
                 if dir_name.startswith(pattern[:-1]):
                     return True
             elif dir_name == pattern:
-                # 完全一致
                 return True
         return False
     
     def should_exclude_file(file_name, file_path):
-        """ファイルを除外するかどうかを判定"""
         for pattern in exclude_file_patterns:
             if pattern.startswith('*') and pattern.endswith('*'):
-                # *_masked.* のようなパターン
                 if '_masked.' in file_name:
                     return True
             elif pattern.startswith('*.'):
-                # *.pyc のようなパターン
                 if file_name.endswith(pattern[1:]):
                     return True
             elif pattern.startswith('*'):
-                # *pattern のような場合
                 if file_name.endswith(pattern[1:]):
                     return True
             elif pattern.endswith('*'):
-                # pattern* のような場合
                 if file_name.startswith(pattern[:-1]):
                     return True
             elif file_name == pattern:
-                # 完全一致
                 return True
         return False
     
     for root, dirs, files in os.walk(directory):
-        # 除外するディレクトリをフィルタリング
-        # dirs[:] を使って元のリストを変更することで、os.walkが除外ディレクトリに入らないようにする
         dirs[:] = [d for d in dirs if not should_exclude_directory(d, os.path.join(root, d))]
         
         for file in files:
             file_path = os.path.join(root, file)
-            
-            # ファイルの除外チェック
             if not should_exclude_file(file, file_path):
                 found_files.append(file_path)
     
     return found_files
 
 def read_file_content(file_path):
-    """ファイルの内容を読み込む"""
+    """Read file content with encoding handling"""
     try:
         with open(file_path, 'r', encoding='utf-8') as file:
-            content = file.read()
-            return content
+            return file.read()
     except UnicodeDecodeError:
         try:
             with open(file_path, 'r', encoding='shift_jis') as file:
-                content = file.read()
-                return content
+                return file.read()
         except:
-            print(f"  警告: {file_path} は読み込めませんでした（バイナリファイルの可能性）")
             return None
-    except Exception as e:
-        print(f"  エラー: {file_path} の読み込み中にエラーが発生しました: {e}")
+    except Exception:
         return None
 
 def create_secret_patterns():
-    """機密情報を検出するための正規表現パターンを作成"""
+    """Create regex patterns for detecting sensitive information"""
     patterns = []
     
     general_key_patterns = [
-        # password系
         r'(password\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(pass\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(pwd\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
-        
-        # token系
         r'(token\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(auth[_\-]?token\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(access[_\-]?token\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(session[_\-]?token\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
-        
-        # secret系
         r'(secret\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(secret[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
+        r'(secret[_\-]?key[_\-]?base\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(client[_\-]?secret\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(app[_\-]?secret\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
-        r'(secret[_\-]?key[_\-]?base\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
-        
-        # key系
         r'(api[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(access[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(private[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(public[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(encryption[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
-        
-        # その他の機密情報
         r'(consumer[_\-]?key\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(consumer[_\-]?secret\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
         r'(client[_\-]?id\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
@@ -159,7 +128,6 @@ def create_secret_patterns():
         r'(passphrase\s*[:=>\-]\s*["\']?)([^"\';\s,})\]]+)(["\']?)',
     ]
     
-    # 2. 定数定義パターン（PHP, Python, JavaScript）
     define_patterns = [
         r"(define\s*\(\s*['\"]DB_PASS['\"],\s*['\"])([^'\"]+)(['\"])",
         r"(define\s*\(\s*['\"].*(?:PASS|PASSWORD|SECRET|KEY|TOKEN)['\"],\s*['\"])([^'\"]+)(['\"])",
@@ -167,20 +135,17 @@ def create_secret_patterns():
         r"(\w*(?:PASSWORD|SECRET|KEY|TOKEN|API)\w*\s*=\s*['\"])([^'\"]+)(['\"])",
     ]
     
-    # 3. 環境変数パターン（.env ファイル）
     env_patterns = [
         r'^(\w*(?:PASSWORD|SECRET|KEY|TOKEN|API|SID)\w*\s*=\s*)([^\s#]+)',
         r'^(DATABASE_URL\s*=\s*[^:]+://[^:]+:)([^@]+)(@.*)',
         r'^(REDIS_URL\s*=\s*[^:]+://[^:]*:)([^@]+)(@.*)',
     ]
     
-    # 4. 辞書・配列パターン（PHP, Python, JavaScript）
     array_patterns = [
         r"(['\"](?:\w*(?:password|secret|key|token|api|pass|pwd)\w*)['\"][\s]*=>[\s]*['\"])([^'\"]+)(['\"])",
         r"(['\"](?:\w*(?:password|secret|key|token|api|pass|pwd)\w*)['\"][\s]*:[\s]*['\"])([^'\"]+)(['\"])",
     ]
     
-    # 5. HTTPヘッダーパターン
     header_patterns = [
         r"(['\"]Authorization['\"][\s]*:[\s]*['\"]Bearer\s+)([^'\"]+)(['\"])",
         r"(['\"]X-API-Key['\"][\s]*:[\s]*['\"])([^'\"]+)(['\"])",
@@ -188,38 +153,33 @@ def create_secret_patterns():
         r"(\"Authorization\":\s*\"Bearer\s+)([^\"]+)(\")",
     ]
     
-    # 6. AWS関連のパターン
     aws_patterns = [
-        r'(AKIA[0-9A-Z]{16})',  # AWS Access Key ID
-        r'([A-Za-z0-9/+=]{40})',  # AWS Secret Access Key (40文字)
-        r'(AQoE[A-Za-z0-9/+=]+)',  # AWS Session Token
+        r'(AKIA[0-9A-Z]{16})',
+        r'([A-Za-z0-9/+=]{40})',
+        r'(AQoE[A-Za-z0-9/+=]+)',
     ]
     
-    # 7. 特定のサービスのAPIキーパターン
     service_patterns = [
-        r'(sk_(?:test|live)_[0-9A-Za-z]{24,})',  # Stripe Secret Key
-        r'(pk_(?:test|live)_[0-9A-Za-z]{24,})',  # Stripe Publishable Key
-        r'(whsec_[0-9A-Za-z]{24,})',  # Stripe Webhook Secret
-        r'(SG\.[0-9A-Za-z_\-]{22}\.[0-9A-Za-z_\-]{43})',  # SendGrid API Key
-        r'(ghp_[0-9A-Za-z]{36})',  # GitHub Personal Access Token
-        r'(GOCSPX-[0-9A-Za-z_\-]{28})',  # Google OAuth Client Secret
-        r'(AC[0-9a-f]{32})',  # Twilio Account SID
-        r'(SK[0-9a-f]{32})',  # Twilio API Key
-        r'(key-[0-9a-f]{32})',  # Mailgun API Key
-        r'(EAA[0-9A-Za-z]+)',  # Facebook Access Token
+        r'(sk_(?:test|live)_[0-9A-Za-z]{24,})',
+        r'(pk_(?:test|live)_[0-9A-Za-z]{24,})',
+        r'(whsec_[0-9A-Za-z]{24,})',
+        r'(SG\.[0-9A-Za-z_\-]{22}\.[0-9A-Za-z_\-]{43})',
+        r'(ghp_[0-9A-Za-z]{36})',
+        r'(GOCSPX-[0-9A-Za-z_\-]{28})',
+        r'(AC[0-9a-f]{32})',
+        r'(SK[0-9a-f]{32})',
+        r'(key-[0-9a-f]{32})',
+        r'(EAA[0-9A-Za-z]+)',
     ]
     
-    # 8. JWTトークンパターン
     jwt_patterns = [
-        r'(eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]*)',  # JWT Token
+        r'(eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]*)',
     ]
     
-    # 9. コメント内のパターン（# で始まるコメント）
     comment_patterns = [
         r'(#\s*\w*(?:PASSWORD|SECRET|KEY|TOKEN|API|SID)\w*\s*=\s*)([^\s#]+)',
     ]
     
-    # すべてのパターンをまとめる
     patterns.extend(general_key_patterns)
     patterns.extend(define_patterns)
     patterns.extend(env_patterns)
@@ -233,19 +193,17 @@ def create_secret_patterns():
     return patterns
 
 def find_secrets_in_text(text, patterns):
-    """テキスト内の機密情報を検出する"""
+    """Find sensitive information in text"""
     found_secrets = []
     
     for pattern in patterns:
-        # 大文字小文字を区別しない検索（ただし、一部のパターンは除く）
         flags = re.IGNORECASE
         if any(service_pattern in pattern for service_pattern in ['AKIA', 'sk_', 'pk_', 'SG\.', 'ghp_', 'GOCSPX', 'AC[0-9a-f]', 'SK[0-9a-f]', 'key-[0-9a-f]', 'EAA', 'eyJ']):
-            flags = 0  # サービス固有のパターンは大文字小文字を区別
+            flags = 0
         
         matches = re.finditer(pattern, text, flags)
         
         for match in matches:
-            # マッチした情報を保存
             secret_info = {
                 'pattern': pattern,
                 'full_match': match.group(0),
@@ -258,167 +216,156 @@ def find_secrets_in_text(text, patterns):
     return found_secrets
 
 def mask_secrets_in_text(text, patterns):
-    """テキスト内の機密情報をマスキングする"""
+    """Mask sensitive information in text"""
     masked_text = text
     
-    # 各パターンでマスキングを実行
     for pattern in patterns:
-        # 大文字小文字を区別しない検索（ただし、一部のパターンは除く）
         flags = re.IGNORECASE
         if any(service_pattern in pattern for service_pattern in ['AKIA', 'sk_', 'pk_', 'SG\.', 'ghp_', 'GOCSPX', 'AC[0-9a-f]', 'SK[0-9a-f]', 'key-[0-9a-f]', 'EAA', 'eyJ']):
-            flags = 0  # サービス固有のパターンは大文字小文字を区別
+            flags = 0
         
         def replace_secret(match):
             groups = match.groups()
             
-            # AWS Access Key、サービス固有のトークンなど（グループが1つだけ）
             if len(groups) == 1:
                 return "***MASKED***"
-            
-            # 環境変数の特殊パターン（DATABASE_URL, REDIS_URL）
             elif len(groups) == 3 and ('DATABASE_URL' in match.group(0) or 'REDIS_URL' in match.group(0)):
-                prefix = groups[0]  # "DATABASE_URL=postgresql://user:"
-                password = groups[1]  # パスワード部分
-                suffix = groups[2]   # "@host:port/db"
+                prefix = groups[0]
+                suffix = groups[2]
                 return prefix + "***" + suffix
-            
-            # 一般的なキー:値の場合（グループが3つ）
             elif len(groups) == 3:
-                prefix = groups[0]  # "password: " の部分
-                value = groups[1]   # 実際の値
-                suffix = groups[2]  # 引用符など
-                
-                # 値の部分だけをマスキング
+                prefix = groups[0]
+                suffix = groups[2]
                 return prefix + "***" + suffix
-            
-            # コメント内のパターン（グループが2つ）
             elif len(groups) == 2:
-                prefix = groups[0]  # "# API_KEY="
-                value = groups[1]   # 実際の値
+                prefix = groups[0]
                 return prefix + "***"
-            
-            # その他の場合
             else:
                 return "***MASKED***"
         
-        # 大文字小文字を区別しない置換
         masked_text = re.sub(pattern, replace_secret, masked_text, flags=flags)
     
     return masked_text
 
 def overwrite_file(file_path, masked_content):
-    """マスキングされた内容で既存ファイルを上書きする"""
+    """Overwrite existing file with masked content"""
     try:
-        # バックアップファイルを作成（安全のため）
         backup_path = file_path + '.backup'
         
-        # 元のファイルをバックアップ
         with open(file_path, 'r', encoding='utf-8') as original:
             original_content = original.read()
         
         with open(backup_path, 'w', encoding='utf-8') as backup:
             backup.write(original_content)
         
-        # 元のファイルをマスキング版で上書き
         with open(file_path, 'w', encoding='utf-8') as file:
             file.write(masked_content)
         
         return backup_path
-    except Exception as e:
-        print(f"  エラー: ファイルの上書きに失敗しました: {e}")
+    except Exception:
         return None
 
+def cleanup_backups(current_dir):
+    """Clean up backup files"""
+    backup_files = []
+    for root, dirs, files in os.walk(current_dir):
+        for file in files:
+            if file.endswith('.backup'):
+                backup_files.append(os.path.join(root, file))
+    
+    if backup_files:
+        print(f"\nFound {len(backup_files)} backup files")
+        
+        while True:
+            cleanup = input("Delete backup files? (y/n): ").lower().strip()
+            if cleanup in ['y', 'yes']:
+                for backup_file in backup_files:
+                    try:
+                        os.remove(backup_file)
+                    except Exception:
+                        pass
+                print("Backup files deleted")
+                break
+            elif cleanup in ['n', 'no']:
+                print("Backup files kept")
+                break
+
 def main():
-    print("=" * 50)
-    print("機密情報マスキングツール（上書き版）")
-    print("=" * 50)
+    print("Secret Masking Tool")
+    print("=" * 30)
     
     current_dir = os.getcwd()
-    print(f"作業ディレクトリ: {current_dir}")
+    print(f"Working directory: {current_dir}")
     
-    # 確認メッセージ
-    print("\n⚠️  注意: このツールは既存ファイルを直接上書きします。")
-    print("   安全のため、各ファイルのバックアップ（.backup）を作成します。")
+    print("\nWarning: This tool will overwrite existing files.")
+    print("Backup files (.backup) will be created for safety.")
     
-    # ユーザーに確認を求める
     while True:
-        confirm = input("\n続行しますか？ (y/n): ").lower().strip()
+        confirm = input("\nContinue? (y/n): ").lower().strip()
         if confirm in ['y', 'yes']:
             break
         elif confirm in ['n', 'no']:
-            print("処理を中止しました。")
+            print("Cancelled")
             return
         else:
-            print("'y' または 'n' で回答してください。")
+            print("Please enter 'y' or 'n'")
     
-    # 機密情報検出パターンを作成
     patterns = create_secret_patterns()
-    print(f"\n検出パターン数: {len(patterns)}")
+    print(f"\nDetection patterns: {len(patterns)}")
     
-    # ファイルを検索
-    print("\nファイルを検索しています...")
+    print("Scanning files...")
     files = find_files(current_dir)
-    print(f"処理対象ファイル数: {len(files)}")
+    print(f"Target files: {len(files)}")
     
-    # 統計用の変数
     total_secrets_found = 0
     files_with_secrets = 0
     files_overwritten = 0
     backup_files_created = 0
     
-    # 各ファイルで機密情報を検索・マスキング
-    print("\n機密情報を検索・マスキングしています...")
-    print("-" * 50)
+    print("\nProcessing files...")
+    print("-" * 30)
     
     for file_path in files:
-        print(f"\n📁 {os.path.relpath(file_path, current_dir)}")
+        print(f"\n{os.path.relpath(file_path, current_dir)}")
         content = read_file_content(file_path)
         
         if content is not None:
             secrets = find_secrets_in_text(content, patterns)
             
             if secrets:
-                print(f"  ⚠️  機密情報が {len(secrets)} 件見つかりました:")
-                for i, secret in enumerate(secrets, 1):
-                    print(f"    {i}. '{secret['full_match']}'")
+                print(f"  Found {len(secrets)} secrets")
                 
-                # 統計を更新
                 total_secrets_found += len(secrets)
                 files_with_secrets += 1
                 
-                # マスキングを実行
-                print("  🔒 マスキングを実行しています...")
+                print("  Masking...")
                 masked_content = mask_secrets_in_text(content, patterns)
                 
-                # 既存ファイルを上書き
                 backup_path = overwrite_file(file_path, masked_content)
                 if backup_path:
                     files_overwritten += 1
                     backup_files_created += 1
-                    relative_backup_path = os.path.relpath(backup_path, current_dir)
-                    print(f"  💾 バックアップ作成: {relative_backup_path}")
-                    print(f"  ✅ ファイル上書き完了")
+                    print("  Completed")
                 
             else:
-                print("  ✅ 機密情報は見つかりませんでした")
+                print("  No secrets found")
         else:
-            print("  ⚠️  （読み込み不可）")
+            print("  Skipped (unreadable)")
     
-    # 最終統計を表示
-    print("\n" + "=" * 50)
-    print("処理結果")
-    print("=" * 50)
-    print(f"処理対象ファイル数: {len(files)}")
-    print(f"機密情報が見つかったファイル数: {files_with_secrets}")
-    print(f"検出された機密情報の総数: {total_secrets_found}")
-    print(f"上書きされたファイル数: {files_overwritten}")
-    print(f"作成されたバックアップファイル数: {backup_files_created}")
+    print("\n" + "=" * 30)
+    print("Results")
+    print("=" * 30)
+    print(f"Target files: {len(files)}")
+    print(f"Files with secrets: {files_with_secrets}")
+    print(f"Total secrets found: {total_secrets_found}")
+    print(f"Files overwritten: {files_overwritten}")
+    print(f"Backup files created: {backup_files_created}")
     
     if backup_files_created > 0:
-        print(f"\n💡 元のファイルは .backup 拡張子で保存されています。")
-        print(f"   問題がなければ、バックアップファイルは削除しても構いません。")
+        print(f"\nOriginal files saved with .backup extension")
+        cleanup_backups(current_dir)
     
-    print("\n✨ 処理が完了しました！")
+    print("\nCompleted!")
 
 if __name__ == "__main__":
     main()
